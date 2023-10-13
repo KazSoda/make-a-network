@@ -124,9 +124,7 @@ dot()
 NomsArrets=[]
 # On cherche à tracer les routes
 for route in Routes:
-    # On récupère le premier caractère comme arrêt 1
-    print("0")
-    
+    # On part du principe que le premier arrêt lu est l'arrêt 1   
 
 
 #   Initialisation de l'univers
