@@ -18,19 +18,19 @@ class bus:
         self.Parcours = Parcours#Liste d'arrêts, tableau d'arrêts
 
     def getType(self):
-        return Type
+        return self.Type
 
     def getChargeMaximale(self):
-        return ChargeMaximale
+        return self.ChargeMaximale
 
     def getRapidité(self):
-        return Rapidité
+        return self.Rapidité
 
     def getVitesse(self):
-        return Vitesse
+        return self.Vitesse
 
     def getParcours(self):
-        return Parcours
+        return self.Parcours
     
 #   Objet : un arrêt
 #   Possède :
@@ -42,10 +42,10 @@ class arret:
         self.File =  File#File d'attente (ordonnée) des personnes, tableau de personnes
 
     def getRoutes(self):
-        return Routes
+        return self.Routes
 
     def getFile(self):
-        return File
+        return self.File
     
 #   Objet : une route
 #   Possède :
@@ -57,10 +57,10 @@ class route:
         self.Distance = Distance#Distance en (M), int
 
     def getArrets(self):
-        return Arrets
+        return self.Arrets
 
     def getDistance(self):
-        return Distance
+        return self.Distance
 
 #   Objet : une personne
 #   Possède :
@@ -72,6 +72,15 @@ class personne:
         self.Aller = Aller#Trajet aller (heure départ, arrêt départ, arrêt arrivée), tableau de str
         self.Retour = Retour#Trajet retour (heure départ, arrêt départ, arrêt arrivée), tableau de str
         self.Nom = Nom#Nom, str
+
+    def getAller(self):
+        return self.Aller
+
+    def getRetour(self):
+        return self.Retour
+
+    def getNom(self):
+        return self.Nom
     
 #   Données fixes
 #   Bus
@@ -125,7 +134,7 @@ NomsArrets=[]
 # On cherche à tracer les routes
 for route in Routes:
     # On part du principe que le premier arrêt lu est l'arrêt 1   
-
+    print(Bus1.getType())
 
 #   Initialisation de l'univers
 #temps = 0
