@@ -16,7 +16,7 @@ class bus:
         self.Rapidité = Rapidité#Rapidité de charge en S/Personne, int
         self.Vitesse = Vitesse#Vitesse en M/S, int
         self.Parcours = Parcours#Liste d'arrêts, tableau d'arrêts
-        self.Position = []#Position actuelle du bus par rapport à son trajet (exemple : 80% du trajet AB) => ("AB",80)
+        self.Position = []#Position actuelle du bus par rapport à son trajet (exemple : 80% du trajet AB avec 0.x distance parcourue) => ("AB",x,80)
 
     def getType(self):
         return self.Type
@@ -36,13 +36,19 @@ class bus:
     def getPosition(self):
         return self.Position
 
-    def setPosition(self,pos,avancee):
+    def setPosition(self,pos,pourcentage,avancee):
+        self.Position.clear()
         self.Position.append(pos)
+        self.Position.append(pourcentage)
         self.Position.append(avancee)
 
+    def getPourcentage(self,Distance):
+        return (self.getPosition()[2]*100)/Distance
     def getAvancée(self,Distance):
-        return Distance/self.Vitesse
-    
+        self.Position[2]=self.getPosition()[2]+Distance/self.Vitesse
+        self.Position[1]=(self.getPourcentage(Distance)/Distance)
+        return None
+
 #   Objet : un arrêt
 #   Possède :
 #       - des routes // (Minimum 1) reliant cet arrêt
@@ -130,14 +136,14 @@ fichier.close()
 
 
 def BusDémarre():
-    print("Démarrage des bus.\n")
+    logs.write("Démarrage des bus.\n")
     #On démarre tous les bus
     for UnBus in Bus:
         #On ne traite que si le bus a un parcours valide
         if len(UnBus.getParcours()) > 1:
             Arret1 = UnBus.getParcours()[0]
             Arret2 = UnBus.getParcours()[1]
-            UnBus.setPosition(Arret1+Arret2,0)
+            UnBus.setPosition(Arret1+Arret2,0,0)
             logs.write("Départ du bus (trajet de départ/pourcentage):\n")
             logs.write(UnBus.getPosition()[0]+"\n")
             logs.write(str(UnBus.getPosition()[1])+"\n")
@@ -147,21 +153,47 @@ def BusDémarre():
             
 def BusAvance():
     logs.write("Avancée des bus\n")
+    #Destination trouvée (pour éviter que la boucle se répète sur un même arrêt)
+    DestinationTrouvée = False
+    RouteTrouvée = False
     #On avance tous les bus
     for UnBus in Bus:
         #On vérifie si le bus n'est pas à un arrêt
-        if UnBus.getPosition()[1] == 100 :
-            logs.write("Arrêt du bus !\n",UnBus.getPosition(),"\n")
-        else :
-            #On avance le bus selon sa vitesse
-            logs.write("Mon bus\n")
-            #Distance du trajet actuel
+        if UnBus.getPosition()[1] >= 100 :
+            #TO DO : On compte les personnes à décharger
+
+            #On part en direction du prochain arrêt (uniquement lorsque les gens sont descendus !!)
+            #On vérifie si l'on est pas en fin de parcours, si c'est le cas on fait tout dans le sens inverse !
+            #On cherche le départ de la dernière étape en date
+            for UnArret in range(len(UnBus.getParcours())):
+                if DestinationTrouvée == False:
+                    if UnBus.getPosition()[0][0]==UnBus.getParcours()[UnArret]:
+                        if UnBus.getPosition()[0][1]==UnBus.getParcours()[UnArret+1]:
+                        #On a trouvé le trajet actuel, on lit le prochain arrêt
+                        #Si l'arrêt en cours est le dernier, on fait le parcours inverse
+                            if UnArret+2 == len(UnBus.getParcours()):
+                                UnBus.Parcours = ''.join(reversed(UnBus.getParcours()))
+                                UnBus.setPosition(UnBus.getParcours()[0]+UnBus.getParcours()[1],0,0)
+                                logs.write("Trajet :" + str(UnBus.getPosition()[0]) + " Avancée :" + str(int(UnBus.getPosition()[1])) + "%\n")
+                                DestinationTrouvée = True
+                            else:
+                                #On lit l'arrêt suivant
+                                UnBus.setPosition(UnBus.getParcours()[UnArret+1]+UnBus.getParcours()[UnArret+2],0,0)
+                                logs.write("Trajet :" + str(UnBus.getPosition()[0]) + " Avancée :" + str(int(UnBus.getPosition()[1])) + "%\n")
+                                DestinationTrouvée = True
+        else:
             for UneRoute in Routes:
                 #On cherche la route actuelle
                 if UneRoute.getTrajet() == UnBus.getPosition()[0] or ''.join(reversed(UneRoute.getTrajet())) == UnBus.getPosition()[0]:
-                    Distance = UnBus.getAvancée(UneRoute.getDistance())
-                    UnBus.Position[1]=UnBus.Position[1]+Distance
-                    logs.write(str(UnBus.getPosition())+"\n")
+                    UnBus.getAvancée(UneRoute.getDistance())
+                    logs.write("Trajet :"+str(UnBus.getPosition()[0])+" Avancée :"+str(int(UnBus.getPosition()[1]))+"%\n")
+                    RouteTrouvée=True
+            # Si aucune route trouvée, cela signifie qu'il faut trouver une route intermédiaire !
+            if RouteTrouvée==False:
+                for UneRoute in Routes:
+                #On récupère les arrêts de départ et d'arrivée du trajet
+                    Départ = UnBus.getPosition()[0][0]
+                    Arrivée = UnBus.getPosition()[0][1]
 
 
 
@@ -183,13 +215,13 @@ for i in range(len(dataLigne)):
 logs = open("logs.txt", "w")
 logs.close()
 logs = open("logs.txt", "a")
-temps = 0
+temps = 1
 BusDémarre()
 #   La durée de vie de l'univers est de 10000 S
 while temps < 100000:
-    logs.write("Univers à la seconde ")
+    logs.write("\n\n\nUnivers à la seconde ")
     logs.write(str(temps)+"\n")
     BusAvance()
     # Une unité de temps est passée
-    temps+=temps
+    temps+=1
 logs.close()
