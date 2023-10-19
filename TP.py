@@ -111,7 +111,7 @@ class personne:
 Bus = []
 Bus.append(bus("Double",10,1,30,("B","A","C","E","C","A")))
 Bus.append(bus("Double",10,1,30,("D","C","E","C")))
-Bus.append(bus("Double",10,1,30,("B","E","D")))
+Bus.append(bus("Double",10,1,30,("A","E","D"))) #B E D, temporaire !!!
 Bus.append(bus("Fast",2,1,10,("A","C")))
 
 #   Arrets
@@ -134,16 +134,54 @@ fichier = open('file.txt', "r")
 lesLignes = fichier.readlines()
 fichier.close()
 
+def CréeRoute(Départ, Arrivée):
+    #On empêche de mettre deux fois de suite le même arrêt
+    if Départ != Arrivée:
+        ListeRoutesA = []
+        ListeRoutesB = []
+        ListeRoutesC = []
+        for UneRoute in Routes:
+            # On cherche à trouver les routes qui contiennent les arrêts pour essayer de les relier
+            if UneRoute.getTrajet()[0] == Départ or UneRoute.getTrajet()[1] == Départ:
+                ListeRoutesA.append(UneRoute.getTrajet())
+            elif UneRoute.getTrajet()[0] == Arrivée or UneRoute.getTrajet()[1] == Arrivée:
+                ListeRoutesB.append(UneRoute.getTrajet())
+        # On regarde maintenant s'il est possible de trouver une route intermédiaire
+        # On cherche un arrêt en commun
+        for ListeA in range(len(ListeRoutesA)):
+            for ListeB in range(len(ListeRoutesB)):
+                # Si les routes ont un arrêt en commun, alors on crée une route intermédiaire en additionnant la longueur des deux routes
+                # CONDITION IF A REFAIRE EN PLUS PROPRE
+                if ListeRoutesA[ListeA][0] == ListeRoutesB[ListeB][0] or ListeRoutesA[ListeA][1] == ListeRoutesB[ListeB][0] or ListeRoutesA[ListeA][0] == ListeRoutesB[ListeB][1] or ListeRoutesA[ListeA][1] == ListeRoutesB[ListeB][1]:
+                    # On a trouvé un arrêt en commun. On garde alors la route supposée de côté
+                    # Pour ça, on récupère d'abord les routes de manière physique
+                    for UneRoute in Routes:
+                        for UneAutreRoute in Routes:
+                            if UneRoute == ListeRoutesB[ListeB] or UneRoute == ListeRoutesA[ListeA]:
+                                if UneAutreRoute == ListeRoutesA[ListeA] or UneAutreRoute == ListeRoutesB[ListeB] and UneRoute != UneAutreRoute:
+                                    # Si l'on trouve une route plus courte, on pourra ainsi garder la plus efficace des deux (ou plus !)
+                                    ListeRoutesC.append((Départ, Arrivée), str(UneRoute.getDistance() + UneAutreRoute.getDistance()))
+        # On regarde si on a trouvé un trajet qui conviendrait
+        print(len(ListeRoutesC))
+
 
 def BusDémarre():
     logs.write("Démarrage des bus.\n")
     #On démarre tous les bus
     for UnBus in Bus:
+        RouteExiste = False
         #On ne traite que si le bus a un parcours valide
         if len(UnBus.getParcours()) > 1:
             Arret1 = UnBus.getParcours()[0]
             Arret2 = UnBus.getParcours()[1]
             UnBus.setPosition(Arret1+Arret2,0,0)
+            #On vérifie que la route existe
+            for UneRoute in Routes:
+                if UneRoute.getTrajet() == str(Arret1+Arret2) or ''.join(reversed(UneRoute.getTrajet())) == str(Arret1+Arret2):
+                    RouteExiste=True
+            if RouteExiste==False:
+                #Si la route n'existe pas, on cherche une voie intermédiaire
+                CréeRoute(Arret1,Arret2)
             logs.write("Départ du bus (trajet de départ/pourcentage):\n")
             logs.write(UnBus.getPosition()[0]+"\n")
             logs.write(str(UnBus.getPosition()[1])+"\n")
@@ -190,10 +228,9 @@ def BusAvance():
                     RouteTrouvée=True
             # Si aucune route trouvée, cela signifie qu'il faut trouver une route intermédiaire !
             if RouteTrouvée==False:
-                for UneRoute in Routes:
-                #On récupère les arrêts de départ et d'arrivée du trajet
-                    Départ = UnBus.getPosition()[0][0]
-                    Arrivée = UnBus.getPosition()[0][1]
+                CréeRoute(UnBus.getPosition()[0][0],UnBus.getPosition()[0][1])
+
+
 
 
 
