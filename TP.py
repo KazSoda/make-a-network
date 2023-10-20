@@ -54,16 +54,16 @@ class bus:
 #       - des routes // (Minimum 1) reliant cet arrêt
 #       - une file d'attente // Ordonnée des personnes (premier arrivé, premier choisi)
 class arret:
-    def __init__(self, ID, Routes):
+    def __init__(self, ID, ArretsProches):
         self.ID = ID#Lettre de l'arrêt
-        self.Routes = Routes#Route(s) reliant cet arrêt, tableau de routes
+        self.ArretsProches = ArretsProches#Arrêt(s) joignables à cet arrêt
         self.File =  []#File d'attente (ordonnée) des personnes, tableau de personnes
 
     def getID(self):
         return self.ID
     
-    def getRoutes(self):
-        return self.Routes
+    def getArretsProches(self):
+        return self.ArretsProches
 
     def getFile(self):
         return self.File
@@ -116,11 +116,11 @@ Bus.append(bus("Fast",2,1,10,("A","C")))
 
 #   Arrets
 Arrets = []
-Arrets.append(arret("A","12"))
-Arrets.append(arret("B","1"))
-Arrets.append(arret("C","234"))
-Arrets.append(arret("D","3"))
-Arrets.append(arret("E","4"))
+Arrets.append(arret("A",(("B",10),("C",4))))
+Arrets.append(arret("B",(("A",10),("B",0))))
+Arrets.append(arret("C",(("A",4),("D",12),("E",4))))
+Arrets.append(arret("D",(("C",12),("D",0))))
+Arrets.append(arret("E",(("C",4),("E",0))))
 
 #   Routes
 Routes = []
@@ -135,35 +135,30 @@ lesLignes = fichier.readlines()
 fichier.close()
 
 def CréeRoute(Départ, Arrivée):
-    #On empêche de mettre deux fois de suite le même arrêt
-    if Départ != Arrivée:
-        ListeRoutesA = []
-        ListeRoutesB = []
-        ListeRoutesC = []
-        for UneRoute in Routes:
-            # On cherche à trouver les routes qui contiennent les arrêts pour essayer de les relier
-            if UneRoute.getTrajet()[0] == Départ or UneRoute.getTrajet()[1] == Départ:
-                ListeRoutesA.append(UneRoute.getTrajet())
-            elif UneRoute.getTrajet()[0] == Arrivée or UneRoute.getTrajet()[1] == Arrivée:
-                ListeRoutesB.append(UneRoute.getTrajet())
-        # On regarde maintenant s'il est possible de trouver une route intermédiaire
-        # On cherche un arrêt en commun
-        for ListeA in range(len(ListeRoutesA)):
-            for ListeB in range(len(ListeRoutesB)):
-                # Si les routes ont un arrêt en commun, alors on crée une route intermédiaire en additionnant la longueur des deux routes
-                # CONDITION IF A REFAIRE EN PLUS PROPRE
-                if ListeRoutesA[ListeA][0] == ListeRoutesB[ListeB][0] or ListeRoutesA[ListeA][1] == ListeRoutesB[ListeB][0] or ListeRoutesA[ListeA][0] == ListeRoutesB[ListeB][1] or ListeRoutesA[ListeA][1] == ListeRoutesB[ListeB][1]:
-                    # On a trouvé un arrêt en commun. On garde alors la route supposée de côté
-                    # Pour ça, on récupère d'abord les routes de manière physique
-                    for UneRoute in Routes:
-                        for UneAutreRoute in Routes:
-                            if UneRoute == ListeRoutesB[ListeB] or UneRoute == ListeRoutesA[ListeA]:
-                                if UneAutreRoute == ListeRoutesA[ListeA] or UneAutreRoute == ListeRoutesB[ListeB] and UneRoute != UneAutreRoute:
-                                    # Si l'on trouve une route plus courte, on pourra ainsi garder la plus efficace des deux (ou plus !)
-                                    ListeRoutesC.append((Départ, Arrivée), str(UneRoute.getDistance() + UneAutreRoute.getDistance()))
-        # On regarde si on a trouvé un trajet qui conviendrait
-        print(len(ListeRoutesC))
+    AccessiblesA = []
+    AccessiblesB = []
+    # On cherche les arrêts atteignables depuis le départ ou l'arrivée
+    for UnArret in Arrets:
+        # On récupère les arrêts atteignables depuis le départ
+        if UnArret.getID() == Départ:
+            AccessiblesA.append(UnArret.getArretsProches())
+        if UnArret.getID() == Arrivée:
+            # On récupère les arrêts atteignables depuis l'arrivée
+            AccessiblesB.append(UnArret.getArretsProches())
+    # On regarde s'il existe un arrêt en commun
+    for i in range(len(AccessiblesA[0])):
+        for j in range(len(AccessiblesB[0])):
+            print(AccessiblesB[0][j][0])
+            if AccessiblesA[0][i][0] == AccessiblesB[0][j][0]:
+                # On crée la route intermédiaire (exemple Arrêt C en commun de A et B alors on créé AB qui vaut AC + AB)
+                Routes.append(route((Départ,Arrivée),10))
+                # TODO : On cherche et renvoie la route intermédiaire
 
+                return
+    # Si on arrive ici, c'est que l'on a pas trouvé la route. On teste alors de trouver une route intermédiaire de niveau plus bas
+    for i in range(len(AccessiblesA[0])):
+        for j in range(len(AccessiblesB[0])):
+            CréeRoute(AccessiblesA[0][i][0],AccessiblesB[0][j][0])
 
 def BusDémarre():
     logs.write("Démarrage des bus.\n")
@@ -227,8 +222,8 @@ def BusAvance():
                     logs.write("Trajet :"+str(UnBus.getPosition()[0])+" Avancée :"+str(int(UnBus.getPosition()[1]))+"%\n")
                     RouteTrouvée=True
             # Si aucune route trouvée, cela signifie qu'il faut trouver une route intermédiaire !
-            if RouteTrouvée==False:
-                CréeRoute(UnBus.getPosition()[0][0],UnBus.getPosition()[0][1])
+            # if RouteTrouvée==False:
+            #     CréeRoute(UnBus.getPosition()[0][0],UnBus.getPosition()[0][1])
 
 
 
