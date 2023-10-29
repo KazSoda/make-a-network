@@ -13,7 +13,8 @@ class bus:
         self.ChargeMaximale = ChargeMaximale  # Charge maximale de personne, int
         self.Rapidité = Rapidité  # Rapidité de charge en S/Personne, int
         self.Vitesse = Vitesse  # Vitesse en M/S, int
-        self.Parcours = Parcours  # Liste d'arrêts, tableau d'arrêts
+        self.Parcours = Parcours  # Liste d'arrêts, tableau d'arrêts TODO : Temporaire, à terme, assimiler dès la création du bus en lecture de fichier
+        self.Arrets = [] # Liste d'arrêts desservis
         self.Position = []  # Position actuelle du bus par rapport à son trajet (exemple : 80% du trajet AB avec 0.x distance parcourue) => ("AB",x,80)
         self.File = []  # File d'attente (ordonnée) des personnes, tableau de personnes
         self.Alarret = False # Savoir si le bus est à l'arrêt ou en mouvement
@@ -33,6 +34,9 @@ class bus:
     def getParcours(self):
         return self.Parcours
 
+    def getArrets(self):
+        return self.Arrets
+
     def getPosition(self):
         return self.Position
 
@@ -41,6 +45,7 @@ class bus:
 
     def getFile(self):
         return self.File
+
     def getAlarret(self):
         return self.Alarret
 
@@ -121,13 +126,6 @@ class personne:
 
 
 #   Données fixes
-#   Bus
-MonBus = []
-MonBus.append(bus("Double", 10, 1, 30, ("B", "A", "C", "E", "C", "A")))
-MonBus.append(bus("Double", 10, 1, 30, ("D", "C", "E", "C")))
-MonBus.append(bus("Double", 10, 1, 30, ("B", "E", "D")))
-MonBus.append(bus("Fast", 2, 1, 10, ("A", "C")))
-
 #   Arrets
 Arrets = []
 Arrets.append(arret("A", [("B", 10), ("C", 4)]))
@@ -136,6 +134,14 @@ Arrets.append(arret("C", [("A", 4), ("D", 12), ("E", 4)]))
 Arrets.append(arret("D", [("C", 12), ("D", 0)]))
 Arrets.append(arret("E", [("C", 4), ("E", 0)]))
 
+
+#   Bus
+MonBus = []
+MonBus.append(bus("Double", 10, 1, 30, ("B", "A", "C", "E", "C", "A")))
+MonBus.append(bus("Double", 10, 1, 30, ("D", "C", "E", "C")))
+MonBus.append(bus("Double", 10, 1, 30, ("B", "E", "D")))
+MonBus.append(bus("Fast", 2, 1, 10, ("A", "C")))
+
 #   Routes
 Routes = []
 Routes.append(route(("A", "B"), 10))
@@ -143,47 +149,79 @@ Routes.append(route(("A", "C"), 4))
 Routes.append(route(("C", "D"), 12))
 Routes.append(route(("C", "E"), 4))
 
+p = 1
+res = 0
+#   Calcul du nombre de routes possibles
+for o in range(len(Arrets)):
+    for u in range(len(Arrets)-p):
+        res+=1
+    p+=1
+
+def TrouveRoutesManquantes():
+    #   On essaye de faire en sorte que chaque arrêt soit atteignable depuis un autre, à l'aide de parcours de plusieurs routes
+    while len(Routes) < res:
+         for Arret1 in Arrets:
+             for Arret2 in Arrets:
+                 doesExist = False
+                 if Arret1.getID() != Arret2.getID():
+                     for i in range(len(Routes)):
+                         if (Arret1.getID(),Arret2.getID()) == Routes[i].getArrets() or (Arret2.getID(),Arret1.getID()) == Routes[i].getArrets():
+                            doesExist = True
+                     if not doesExist:
+                         # Calcul de la route
+                         for h in range(len(Arret1.getArretsProches())):
+                             for s in range(len(Arret2.getArretsProches())):
+                                 if Arret1.getArretsProches()[h][0] == Arret2.getArretsProches()[s][0]:
+                                    RouteExisteDeja = False
+                                    Distance=0
+                                    #  On créé la route intermédiaire
+                                    for Route1 in Routes:
+                                        if Route1.getArrets() == (Arret1.getID(),Arret1.getArretsProches()[h][0]) or Route1.getArrets() == (Arret1.getArretsProches()[h][0],Arret1.getID()):
+                                            Distance+=Route1.getDistance()
+                                    for Route2 in Routes:
+                                        if Route2.getArrets() == (Arret2.getArretsProches()[s][0],Arret2.getID()) or Route2.getArrets() == (Arret2.getID(),Arret2.getArretsProches()[s][0]):
+                                            Distance+=Route2.getDistance()
+                                    RouteTemp = route((Arret1.getID(),Arret2.getID()),Distance)
+                                    for Route3 in Routes:
+                                        if Route3.getArrets() == RouteTemp.getArrets() or Route3.getArrets() == reversed(RouteTemp.getArrets()):
+                                            RouteExisteDeja = True
+                                    if not RouteExisteDeja:
+                                        Routes.append(RouteTemp)
+                                        # On rajoute aux arrêts les nouvelles destinations atteignables
+                                        Arret1.getArretsProches().append((Arret2.getID(),Distance))
+                                        Arret2.getArretsProches().append((Arret1.getID(),Distance))
+
+
+
+
+
 #   Lire fichier de données
 fichier = open('file.txt', "r")
 lesLignes = fichier.readlines()
 fichier.close()
 
+def getArretById(ID):
+    for Arret in Arrets:
+        if Arret.getID() == ID:
+            return Arret
+    return False
 
-# def CréeRoute(Départ, Arrivée, AccessiblesA, AccessiblesB):
-#     if len(AccessiblesA)==0 and len(AccessiblesB)==0:
-#         AccessiblesA.append([])
-#         AccessiblesB.append([])
-#     # On cherche les arrêts atteignables depuis le départ ou l'arrivée
-#     for UnArret in Arrets:
-#         # On récupère les arrêts atteignables depuis le départ
-#         if UnArret.getID() == Départ:
-#             AccessiblesA[0]=AccessiblesA[0]+UnArret.getArretsProches()
-#         if UnArret.getID() == Arrivée:
-#             # On récupère les arrêts atteignables depuis l'arrivée
-#             AccessiblesB[0]=AccessiblesB[0]+UnArret.getArretsProches()
-#     # On regarde s'il existe un arrêt en commun
-#     print(AccessiblesA)
-#     for i in range(len(AccessiblesA[0])):
-#         for j in range(len(AccessiblesB[0])):
-#             if AccessiblesA[0][i][0] == AccessiblesB[0][j][0]:
-#                 # On crée la route intermédiaire (exemple Arrêt C en commun de A et B alors on créé AB qui vaut AC + AB)
-#                 Routes.append(route((Départ,Arrivée),10))
-#                 # TODO : On cherche et renvoie la route intermédiaire
-#                 for UneRoute in Routes:
-#                     if Routes[len(Routes)-1].getTrajet() == UneRoute.getTrajet():
-#                          return UneRoute
-#     # Si on arrive ici, c'est que l'on a pas trouvé la route.
-#     # On teste alors de trouver une route intermédiaire de niveau plus bas
-#     AccessiblesA[0] = AccessiblesA[0] + AccessiblesB[0]
-#     ChercherRoute(Départ, Arrivée, AccessiblesA[0])
+def InitialiseBus():
+    for UnBus in MonBus:
+        for i in range(len(UnBus.getParcours())):
+            for Arret in Arrets:
+                # Si on trouve l'arrêt, on l'assimile au bus
+                if Arret.getID() == UnBus.getParcours()[i]:
+                    UnBus.Arrets.append(Arret)
 
-#  TODO: Placer dans Bus des objets arrêts, pas des id !!
+        # On détruit le "parcours" du Bus qui ne sert plus à rien maintenant qu'on a les arrêts
+        UnBus.Parcours = None
+
 def InitialisePersonnes():
     #   Traitement des données trouvées
     for i in range(len(dataLigne)):
         #   Traitement du nombre de personnes cooncernées
         for j in range(int(dataLigne[i][0])):
-            #   TODO: Supprimer le \n qui traine à dataLigne[i][5]
             Personnes.append(personne([[dataLigne[i][2], dataLigne[i][3]], [dataLigne[i][4], dataLigne[i][5][0]+dataLigne[i][5][1]]], dataLigne[i][1]+str(j+1)))
     # On place chaque personne à son arrêt
     for Arret in Arrets:
@@ -196,6 +234,14 @@ def AssassinerPersonne(UnePersonne):
         if Personnes[i].getNom() == UnePersonne.getNom():
             del(Personnes[i])
             return
+
+def PassagerTrouveCorrespondance(UnePersonne):
+    #   Dans le cas où une personne ne trouve pas de bus pour l'emmener à destination, c'est qu'il doit prendre une correspondance.
+    #   On cherche alors les bus qui pourraient assurer ce trajet intermédiaire
+    for Bus in MonBus:
+        for i in range(len(Bus.getArrets())):
+            if UnePersonne.getParcours()[0][1][0] == Bus.getArrets()[i].getID():
+                
 
 def PassagersDescend(UnBus):
     UnBus.Alarret = True
@@ -213,7 +259,7 @@ def PassagersDescend(UnBus):
                     # Si quelqu'un descend, on indique que le bus est à l'arrêt
                     UnBus.Alarret = True
                     UnBus.getFile()[k].isMoving=False
-                    logs.write("Le bus "+UnBus.getParcours()[0]+UnBus.getParcours()[1]+" fait descendre "+UnBus.getFile()[k].getNom()+".\n")
+                    logs.write("Le bus "+UnBus.getArrets()[0].getID()+UnBus.getArrets()[1].getID()+" fait descendre "+UnBus.getFile()[k].getNom()+".\n")
                     ASupprimer.append(UnBus.getFile()[k].getNom())
                     if len(UnBus.getFile()[k].getParcours()) == 1:
                             AssassinerPersonne(UnBus.getFile()[k])
@@ -256,28 +302,39 @@ def PassagersMonte(UnBus,temps):
     if UnBus.getChargeMaximale() > len(UnBus.getFile()):
         for Personne in Personnes:
             # On ne fait monter que si le bus fait le trajet nécessaire pour la personne
-            for j in range(len(UnBus.getParcours())):
-                if len(Personne.getParcours()) > 0 :
-                    if UnBus.getParcours()[j] == Personne.getParcours()[0][1][1]:
-                        # On ne les fait monter que s'ils sont au même arrêt que le bus
-                        if int(Personne.getParcours()[0][0]) <= temps and Personne.getParcours()[0][1][0] == UnBus.getPosition()[0][0]:
-                            for UnArret in Arrets:
-                                for k in range(len(UnArret.getFile())):
-                                    if UnArret.getFile()[k].getNom() == Personne.getNom():
-                                        # On ne fait monter autant que ce que le bus peut prendre par seconde
-                                        if UnBus.getRapidité() > i:
-                                            # On fait monter le nombre de personnes qu'on peut en une seconde :
-                                            UnBus.setFile(Personne)
-                                            Personne.isMoving = True
-                                            logs.write("Le bus "+UnBus.getParcours()[0]+UnBus.getParcours()[1]+" fait monter "+Personne.getNom()+".\n")
-                                            logs.write("Capacité du bus : "+str(len(UnBus.getFile()))+"/"+str(UnBus.getChargeMaximale())+"\n")
-                                            PersonnesSuppr.append(Personne)
-                                            z = True
-                                            if len(UnBus.getFile())+1 <= UnBus.ChargeMaximale :
-                                                UnBus.Alarret = True
-                                            else:
-                                                UnBus.Alarret = False
-                                            i += 1
+            for j in range(len(UnBus.getArrets())):
+                if UnBus.getArrets()[j].getID() == Personne.getParcours()[0][1][1]:
+                    # On ne les fait monter que s'ils sont au même arrêt que le bus
+                    if int(Personne.getParcours()[0][0]) <= temps and Personne.getParcours()[0][1][0] == UnBus.getPosition()[0][0]:
+                        for UnArret in Arrets:
+                            for k in range(len(UnArret.getFile())):
+                                if UnArret.getFile()[k].getNom() == Personne.getNom():
+                                    # On ne fait monter autant que ce que le bus peut prendre par seconde
+                                    if UnBus.getRapidité() > i:
+                                        # On fait monter le nombre de personnes qu'on peut en une seconde :
+                                        UnBus.setFile(Personne)
+                                        Personne.isMoving = True
+                                        logs.write("Le bus "+UnBus.getArrets()[0].getID()+UnBus.getArrets()[1].getID()+" fait monter "+Personne.getNom()+".\n")
+                                        logs.write("Capacité du bus : "+str(len(UnBus.getFile()))+"/"+str(UnBus.getChargeMaximale())+"\n")
+                                        PersonnesSuppr.append(Personne)
+                                        z = True
+                                        if len(UnBus.getFile())+1 <= UnBus.ChargeMaximale :
+                                            UnBus.Alarret = True
+                                        else:
+                                            UnBus.Alarret = False
+                                        i += 1
+            # Si la personne ne peut pas monter, on regarde si son trajet est réalisable par au-moins l'un des bus
+            # Pour s'assurer qu'il ne soit pas bloqué éternellement à l'arrêt
+            if not Personne.isMoving:
+                TrajetPossible = False
+                for Bus in MonBus:
+                    for k in range(len(Bus.getArrets())):
+                        if Bus.getArrets()[k].getID() == Personne.getParcours()[1]:
+                            TrajetPossible = True
+                # Si aucun bus ne peut assurer le trajet, alors on cherche une correspondance
+                if not TrajetPossible:
+                    PassagerTrouveCorrespondance(Personne)
+
     # On retire les personnes montées de la liste d'attente
     for j in range(len(PersonnesSuppr)):
         PassagerQuitteFileArret(PersonnesSuppr[j])
@@ -290,23 +347,17 @@ def BusDémarre():
     for UnBus in MonBus:
         RouteExiste = False
         # On ne traite que si le bus a un parcours valide
-        if len(UnBus.getParcours()) > 1:
-            Arret1 = UnBus.getParcours()[0]
-            Arret2 = UnBus.getParcours()[1]
+        if len(UnBus.getArrets()) > 1:
+            Arret1 = UnBus.getArrets()[0].getID()
+            Arret2 = UnBus.getArrets()[1].getID()
             UnBus.setPosition(Arret1 + Arret2, 0, 0)
             # On vérifie que la route existe
             for UneRoute in Routes:
                 if UneRoute.getTrajet() == str(Arret1 + Arret2) or ''.join(reversed(UneRoute.getTrajet())) == str(Arret1 + Arret2):
                     RouteExiste = True
-            if RouteExiste == False:
-                # Si la route n'existe pas, on cherche une voie intermédiaire
-                AccessiblesA = []
-                AccessiblesB = []
-                # CréeRoute(Arret1,Arret2,AccessiblesA,AccessiblesB)
         else:
             # Gestion d'erreur sur le bus (A REVOIR !!!)
-            print(
-                "Erreur. Le nombre d'arrêts pour le bus n'est pas valide. Un bus doit avoir au-moins deux arrêts pour circuler.\n")
+            print("Erreur. Le nombre d'arrêts pour le bus n'est pas valide. Un bus doit avoir au-moins deux arrêts pour circuler.\n")
 
 
 def BusAvance(temps):
@@ -322,22 +373,21 @@ def BusAvance(temps):
         if UnBus.getPosition()[1] >= 100:
             # On vérifie si l'on est pas en fin de parcours, si c'est le cas on fait tout dans le sens inverse !
             # On cherche le départ de la dernière étape en date
-            for UnArret in range(len(UnBus.getParcours())):
+            for UnArret in range(len(UnBus.getArrets())):
                 if not DestinationTrouvée:
-                    if UnBus.getPosition()[0][0] == UnBus.getParcours()[UnArret]:
-                        if UnBus.getPosition()[0][1] == UnBus.getParcours()[UnArret + 1]:
+                    if UnBus.getPosition()[0][0] == UnBus.getArrets()[UnArret].getID():
+                        if UnBus.getPosition()[0][1] == UnBus.getArrets()[UnArret + 1].getID():
                             # On a trouvé le trajet actuel, on lit le prochain arrêt
                             # Si l'arrêt en cours est le dernier, on fait le parcours inverse
-                            if UnArret + 2 == len(UnBus.getParcours()):
-                                UnBus.Parcours = ''.join(reversed(UnBus.getParcours()))
-                                UnBus.setPosition(UnBus.getParcours()[0] + UnBus.getParcours()[1], 0, 0)
+                            if UnArret + 2 == len(UnBus.getArrets()):
+                                UnBus.Arrets = list(reversed(UnBus.getArrets()))
+                                UnBus.setPosition(UnBus.getArrets()[0].getID() + UnBus.getArrets()[1].getID(), 0, 0)
                                 logs.write("Trajet :" + str(UnBus.getPosition()[0]) + " Avancée :" + str(int(UnBus.getPosition()[1])) + "%\n")
                                 DestinationTrouvée = True
                             else:
                                 # On lit l'arrêt suivant
-                                UnBus.setPosition(UnBus.getParcours()[UnArret + 1] + UnBus.getParcours()[UnArret + 2],0, 0)
-                                logs.write("Trajet :" + str(UnBus.getPosition()[0]) + " Avancée :" + str(
-                                int(UnBus.getPosition()[1])) + "%\n")
+                                UnBus.setPosition(UnBus.getArrets()[UnArret + 1].getID() + UnBus.getArrets()[UnArret + 2].getID(),0, 0)
+                                logs.write("Trajet :" + str(UnBus.getPosition()[0]) + " Avancée :" + str(int(UnBus.getPosition()[1])) + "%\n")
                                 DestinationTrouvée = True
         else:
             # Avant d'avancer, on regarde si l'on est à un arrêt, et si oui, combien de place il reste et de personnes à prendre
@@ -368,8 +418,13 @@ def BusAvance(temps):
                             logs.write("Trajet :" + str(UnBus.getPosition()[0]) + " Avancée :" + str(int(UnBus.getPosition()[1])) + "%\n")
                             RouteTrouvée = True
                             # Si aucune route trouvée, cela signifie qu'il faut trouver une route intermédiaire !
-                            # if RouteTrouvée==False:
-                            # CréeRoute(UnBus.getPosition()[0][0],UnBus.getPosition()[0][1])
+
+
+
+
+
+
+
 
 #   Traitement par ligne
 dataLigne = []
@@ -382,6 +437,8 @@ logs = open("logs.txt", "w")
 logs.close()
 logs = open("logs.txt", "a")
 temps = 1
+InitialiseBus()
+TrouveRoutesManquantes()
 BusDémarre()
 #   La durée de vie de l'univers est de 10000 S
 while temps < 100000:
